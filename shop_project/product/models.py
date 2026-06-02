@@ -18,8 +18,16 @@ class Product(models.Model):
 
 
 class Review(models.Model):
+    STARS_CHOICES = (
+        ('1', '1'),
+        ('2', '2'),
+        ('3', '3'),
+        ('4', '4'),
+        ('5', '5'),
+    )
     text = models.TextField()
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    stars = models.IntegerField(choices=STARS_CHOICES, default=5)
 
     def __str__(self):
         return f"Review for {self.product.title}"

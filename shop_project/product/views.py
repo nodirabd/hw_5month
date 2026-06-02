@@ -6,7 +6,7 @@ from .models import Category, Product, Review
 from .serializers import (
     CategoryListSerializer, CategoryDetailSerializer,
     ProductListSerializer, ProductDetailSerializer,
-    ReviewListSerializer, ReviewDetailSerializer
+    ReviewListSerializer, ReviewDetailSerializer, ProductReviewsSerializer
 )
 
 @api_view(['GET'])
@@ -57,4 +57,10 @@ def review_detail_api_view(request, id):
         return Response(data={'error': 'Review not found!'}, status=status.HTTP_404_NOT_FOUND)
     
     serializer = ReviewDetailSerializer(review, many=False)
+    return Response(data=serializer.data)
+
+@api_view(['GET'])
+def product_reviews_list_api_view(request):
+    products = Product.objects.all()
+    serializer = ProductReviewsSerializer(products, many=True)
     return Response(data=serializer.data)

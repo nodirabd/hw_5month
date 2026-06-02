@@ -27,6 +27,7 @@ urlpatterns = [
     
     # Продукты
     path('api/v1/products/', views.product_list_api_view),
+    path('api/v1/products/reviews/', views.product_reviews_list_api_view),
     path('api/v1/products/<int:id>/', views.product_detail_api_view),
     
     # Отзывы
