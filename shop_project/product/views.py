@@ -1,12 +1,13 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.db import transaction  
+from django.db import transaction
 from .models import Category, Product, Review
 from .serializers import (
-    CategoryListSerializer, CategoryDetailSerializer,
-    ProductListSerializer, ProductDetailSerializer,
-    ReviewListSerializer, ReviewDetailSerializer, ProductReviewsSerializer
+    CategoryListSerializer, CategoryDetailSerializer, CategoryValidateSerializer,
+    ProductListSerializer, ProductDetailSerializer, ProductValidateSerializer,
+    ReviewListSerializer, ReviewDetailSerializer, ReviewValidateSerializer,
+    ProductReviewsSerializer
 )
 
 @api_view(['GET', 'POST'])
@@ -17,12 +18,16 @@ def category_list_create_api_view(request):
         return Response(data=serializer.data)
     
     elif request.method == 'POST':
-        name = request.data.get('name')
-        with transaction.atomic():
-            category = Category.objects.create(
-                name=name
-            )
+        serializer = CategoryValidateSerializer(data=request.data)
+        if not serializer.is_valid():
             return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data=serializer.errors
+            )
+        name = serializer.validated_data.get('name')
+        with transaction.atomic():
+            category = Category.objects.create(name=name)
+        return Response(
             status=status.HTTP_201_CREATED,
             data=CategoryDetailSerializer(category).data
         )
@@ -32,22 +37,32 @@ def category_detail_api_view(request, id):
     try:
         category = Category.objects.get(id=id)
     except Category.DoesNotExist:
-        return Response(data={'error': 'Category not found!'}, status=status.HTTP_404_NOT_FOUND)
-    
+        return Response(
+            data={'error': 'Категория не найдена!'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
     if request.method == 'GET':
         serializer = CategoryDetailSerializer(category, many=False)
         return Response(data=serializer.data)
-        
+
     elif request.method == 'DELETE':
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
+
     elif request.method == 'PUT':
-        category.name = request.data.get('name')
+        serializer = CategoryValidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data=serializer.errors
+            )
+        name = serializer.validated_data.get('name')
+        category.name = name
         category.save()
-        
+
         return Response(
-            status=status.HTTP_201_CREATED, 
+            status=status.HTTP_200_OK,
             data=CategoryDetailSerializer(category).data
         )
 
@@ -59,10 +74,16 @@ def product_list_create_api_view(request):
         return Response(data=serializer.data)
     
     elif request.method == 'POST':
-        title = request.data.get('title')
-        description = request.data.get('description')
-        price = request.data.get('price')
-        category_id = request.data.get('category_id')
+        serializer = ProductValidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data=serializer.errors
+            )
+        title = serializer.validated_data.get('title')
+        description = serializer.validated_data.get('description')
+        price = serializer.validated_data.get('price')
+        category_id = serializer.validated_data.get('category_id')
         with transaction.atomic():
             product = Product.objects.create(
                 title=title,
@@ -81,25 +102,38 @@ def product_detail_api_view(request, id):
     try:
         product = Product.objects.get(id=id)
     except Product.DoesNotExist:
-        return Response(data={'error': 'Product not found!'}, status=status.HTTP_404_NOT_FOUND)
-    
+        return Response(
+            data={'error': 'Товар не найден!'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
     if request.method == 'GET':
         serializer = ProductDetailSerializer(product, many=False)
         return Response(data=serializer.data)
-        
+
     elif request.method == 'DELETE':
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
+
     elif request.method == 'PUT':
-        product.title = request.data.get('title')
-        product.description = request.data.get('description')
-        product.price = request.data.get('price')
-        product.category_id = request.data.get('category_id')
+        serializer = ProductValidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data=serializer.errors
+            )
+        title = serializer.validated_data.get('title')
+        description = serializer.validated_data.get('description')
+        price = serializer.validated_data.get('price')
+        category_id = serializer.validated_data.get('category_id')
+        product.title = title
+        product.description = description
+        product.price = price
+        product.category_id = category_id
         product.save()
-        
+
         return Response(
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_200_OK,
             data=ProductDetailSerializer(product).data
         )
 
@@ -109,18 +143,24 @@ def review_list_create_api_view(request):
         reviews = Review.objects.all()
         serializer = ReviewListSerializer(reviews, many=True)
         return Response(data=serializer.data)
-    
+
     elif request.method == 'POST':
-        text = request.data.get('text')
-        stars = request.data.get('stars')
-        product_id = request.data.get('product_id')
+        serializer = ReviewValidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data=serializer.errors
+            )
+        text = serializer.validated_data.get('text')
+        stars = serializer.validated_data.get('stars')
+        product_id = serializer.validated_data.get('product_id')
         with transaction.atomic():
             review = Review.objects.create(
                 text=text,
                 stars=stars,
                 product_id=product_id
             )
-            
+
         return Response(
             status=status.HTTP_201_CREATED,
             data=ReviewDetailSerializer(review).data
@@ -132,24 +172,33 @@ def review_detail_api_view(request, id):
     try:
         review = Review.objects.get(id=id)
     except Review.DoesNotExist:
-        return Response(data={'error': 'Review not found!'}, status=status.HTTP_404_NOT_FOUND)
-    
+        return Response(
+            data={'error': 'Отзыв не найден!'},
+            status=status.HTTP_404_NOT_FOUND
+        )
     if request.method == 'GET':
         serializer = ReviewDetailSerializer(review, many=False)
         return Response(data=serializer.data)
-        
     elif request.method == 'DELETE':
         review.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
     elif request.method == 'PUT':
-        review.text = request.data.get('text')
-        review.stars = request.data.get('stars')
-        review.product_id = request.data.get('product_id')
+        serializer = ReviewValidateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data=serializer.errors
+            )
+        text = serializer.validated_data.get('text')
+        stars = serializer.validated_data.get('stars')
+        product_id = serializer.validated_data.get('product_id')
+        review.text = text
+        review.stars = stars
+        review.product_id = product_id
         review.save()
         
         return Response(
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_200_OK,
             data=ReviewDetailSerializer(review).data
         )
 
